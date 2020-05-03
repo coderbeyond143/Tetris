@@ -1,0 +1,360 @@
+<!doctype html>
+  <html lang="en">
+    <head>
+      <meta name="viewport" content="user-scalable=0,initial-scale=1,width=device-width,height=device-height"/>
+      <title>Tetris</title>
+      <style>
+         body{
+  margin:0;
+  padding:0;
+  user-select:none;
+  touch-callout:none;
+  background-color:#000;
+  color:Teal;
+  font:italic 10px cursive;
+}
+button{
+  position:absolute;
+  width:20%;
+  height:5%;
+  background-color:LightGray;
+  font:italic 10px verdana;
+  color:navy;
+  font-weight:bolder;
+  border-radius:50%;
+}
+.rotate{
+  top:75%;
+  right:50%;
+}
+.gravity{
+  top:85%;
+  right:50%;
+}
+.left{
+  top:80%;
+  right:70%;
+}
+.right{
+  top:80%;
+  right:30%;
+}
+canvas{
+  border-bottom:1px solid black;
+}
+#score{
+  position:absolute;
+  color:Chocolate;
+  right:10%;
+  top:55%;
+  text-wrap:break-word;
+  font: 1em monospace;
+  font-style:italic;
+  text-transform:capitalize;
+}
+ 
+      </style>
+    </head>
+    <body>
+      <h1 id="loading">Please Wait...</h1>
+      <button class="rotate">^</button>
+      <button class="left"><</button>
+      <button class="right">></button>
+      <button class="gravity">+</button>
+      <div id="score"></div>
+      <script src="https://rawgit.com/coderbeyond143/876111fdd824ce72e5c3a26730b1fe5e/raw/6a8ae3dc85a774a3817705762bb33cb25d186a45/tetrominoes.js"></script>
+      <script>
+          (function() {
+    window.onload = function() {
+     pieces = [
+        [I,"DarkRed"],
+        [J,"DarkGreen"],
+        [L,"DarkBlue"],
+        [O,"Teal"],
+        [T,"peru"],
+        [S,"chocolate"],
+        [Z,"Sienna"],
+    ];
+        init();
+        boardInit();
+        gameBoard();
+        nextPieceBoard();
+        TETRIS.piece = randomPiece();
+        drop();
+        CONTROL();
+        
+    };
+    
+    
+    _w = innerWidth;
+    _h = innerHeight - (innerHeight / 4);
+    offsetX = 1;
+    score = 0;
+    TETRIS = {};
+    col = 10;
+    row = 20;
+    vacant = "white";
+    sq = _h / row;
+    board = [];
+    dropStart = Date.now();
+    gameOver = false;
+    
+    
+    function drop() {
+        var now = Date.now();
+        var delta = now - dropStart;
+        TETRIS.piece.mod++;
+        
+        if (delta > 1000) {
+            TETRIS.piece.gravity();
+            dropStart = Date.now();
+        }
+        
+        if(TETRIS.piece.mod == 100){
+            TETRIS.nextPiece = randomPiece();
+            
+            for (var m = 0; m < 4; m++) {
+            
+                for (var n = 0; n < 4; n++) {
+                    drawSquare(col+offsetX+ n, (col/2) + m, vacant);
+                }
+            }
+            
+            for (var m= 0; m < TETRIS.nextPiece.activeTetromino.length; m++) {
+                for (var n = 0; n < TETRIS.nextPiece.activeTetromino.length; n++) {
+                 
+                    if (TETRIS.nextPiece.activeTetromino[m][n]) {
+                           drawSquare(col + offsetX + n, (col/2) + m, TETRIS.nextPiece.color);
+                    }
+                }
+
+            }
+        }
+        
+        if(!gameOver){
+            requestAnimationFrame(drop);
+        }
+    }
+    
+    
+    function init() {
+        var canvas = document.createElement("canvas");
+        canvas.width = _w;
+        canvas.height = _h;
+        TETRIS.ctx = canvas.getContext("2d");
+        document.body.insertBefore(canvas, document.body.childNodes[0]);
+        document.getElementById("loading").style.display = "none";
+    }
+    
+    
+    function boardInit(){
+        for (var r = 0; r < row;r++) {
+            board[r] = [];
+            for (var c = 0; c < col;c++) {
+                board[r][c] = vacant;
+            }
+        }
+    }
+    
+    
+    function gameBoard() {
+        for (var r = 0; r < row;r++) {
+            for (var c = 0; c < col;c++) {
+                drawSquare(c, r, board[r][c]);
+            }
+        }
+    }
+    
+    
+    function nextPieceBoard() {
+        for (var r = 0; r < 4;r++) {
+            for (var c = 0; c < 4;c++) {
+                drawSquare(col+offsetX+ c, (col/2)+ r, board[r][c]);
+            }
+        }
+    }
+    
+    
+    function randomPiece() {
+        var random = pieces[Math.floor(Math.random() * pieces.length)];
+        return new Piece(random[0], random[1]);
+    }
+    
+    
+    function Piece(tetromino, color) {
+        this.tetromino = tetromino;
+        this.color = color;
+        this.tetrominoN = 0;
+        this.activeTetromino = this.tetromino[this.tetrominoN];
+        this.x = 3;
+        this.y = -2;
+        this.mod = 0;
+    }
+    
+    
+    Piece.prototype.fill = function(color) {
+        for (var r = 0; r < this.activeTetromino.length; r++) {
+            for (var c = 0; c < this.activeTetromino.length; c++) {
+                if (this.activeTetromino[r][c]) {
+                    drawSquare(this.x + c, this.y + r, color);
+                }
+            }
+        }
+    };
+    Piece.prototype.draw = function() {
+        this.fill(this.color);
+    };
+    Piece.prototype.unDraw = function() {
+        this.fill(vacant);
+    };
+    Piece.prototype.gravity = function() {
+        if (!this.collision(0, 1, this.activeTetromino)) {
+            this.unDraw();
+            this.y++;
+            this.draw();
+        }
+        else {
+            this.lock();
+            TETRIS.piece = TETRIS.nextPiece;
+        }
+    };
+    Piece.prototype.rotate = function() {
+        var kick = 0;
+        var nextPattern = this.tetromino[(this.tetrominoN + 1) % this.tetromino.length];
+        if (this.collision(0, 0, nextPattern)) {
+            if (this.x < col / 2) {
+                kick = 1;
+            }
+            else {
+                kick = -1;
+            }
+        }
+        if (!this.collision(kick, 0, nextPattern)) {
+            this.unDraw();
+            this.x += kick;
+            this.tetrominoN = (this.tetrominoN + 1) % this.tetromino.length;
+            this.activeTetromino = this.tetromino[this.tetrominoN];
+            this.draw();
+        }
+    };
+    Piece.prototype.moveLeft = function() {
+        if (!this.collision(-1, 0, this.activeTetromino)) {
+            this.unDraw();
+            this.x--;
+            this.draw();
+        }
+    };
+    Piece.prototype.moveRight = function() {
+        if (!this.collision(1, 0, this.activeTetromino)) {
+            this.unDraw();
+            this.x++;
+            this.draw();
+        }
+    };
+    Piece.prototype.collision = function(x, y, piece) {
+        for (var r = 0; r < piece.length; r++) {
+            for (var c = 0; c < piece.length; c++) {
+                var newX = this.x + x + c;
+                var newY = this.y + y + r;
+                if (!piece[r][c]) {
+                    continue;
+                }
+                if (newX >= col || newX < 0 || newY >= row) {
+                    return true;
+                }
+                if (newY < 0) {
+                    continue;
+                }
+                if (board[newY][newX] != vacant) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    Piece.prototype.lock = function() {
+        for (var r = 0; r < this.activeTetromino.length; r++) {
+            for (var c = 0; c < this.activeTetromino.length; c++) {
+                if (!this.activeTetromino[r][c]) {
+                    continue;
+                }
+                if((this.y + r) < 0){
+                    alert("Game over!");
+                    gameOver = true;
+                    break;
+                    return;
+                }
+                board[this.y + r][this.x + c] = this.color;
+            }
+        }
+        for (var r = 0; r < row;r++) {
+            var isRowFull = true;
+            for (var c = 0; c < col;c++) {
+                isRowFull = isRowFull && (board[r][c] != vacant);
+            }
+            if (isRowFull) {
+                for (var y = r; y > 1; y--) {
+                    for (var c = 0; c < col;c++) {
+                        board[y][c] = board[y - 1][c];
+                    }
+                }
+                score += 10;
+                }
+            }
+        
+        gameBoard();  document.getElementById("score").innerHTML = "score : " + score;
+};
+    
+    
+    function drawSquare(x, y, col) {
+        TETRIS.ctx.fillStyle = col;
+        TETRIS.ctx.fillRect(x * sq, y * sq, sq, sq);
+        TETRIS.ctx.fill();
+
+        TETRIS.ctx.strokeStyle = "black";
+        TETRIS.ctx.strokeRect(x * sq, y * sq, sq, sq);
+        TETRIS.ctx.stroke();
+    }
+
+
+    function CONTROL(){
+        var btn = document.getElementsByTagName("button");
+        btn[0].addEventListener("click",function(){
+            TETRIS.piece.rotate();
+            dropStart = Date.now();
+        },false);
+        btn[1].addEventListener("click",function(){
+            TETRIS.piece.moveLeft();
+            dropStart = Date.now();
+        },false);
+        btn[2].addEventListener("click",function(){
+            TETRIS.piece.moveRight();
+            dropStart = Date.now();
+        },false);
+        btn[3].addEventListener("click",function(){
+            if(gameOver){
+                return;
+            }
+            TETRIS.piece.gravity();
+        },false);
+      }
+    
+    
+    var TETRIS,
+        col,
+        row,
+        vacant,
+        sq,
+        board,
+        pieces,
+        score,
+        _w,
+        gameOver,
+        dropStart,
+        mod,
+        _h,
+        offsetX;
+})();
+      </script> 
+    </body>
+</html>
